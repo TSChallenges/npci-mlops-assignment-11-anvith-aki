@@ -1,0 +1,59 @@
+stages:
+  - train
+  - test
+  - build
+  - deploy
+
+# Job to install requirements and train the model
+train_model:
+  stage: train
+  tags:
+    - self-hosted
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements/requirements.txt
+  script:
+    - python data_preprocessing.py
+    - python train_model.py
+  artifacts:
+    paths:
+      - trained_model/
+    expire_in: 1 hour
+
+# Job to install testing requirements and run test cases
+test_model:
+  stage: test
+  tags:
+    - self-hosted
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements/test_requirements.txt
+  script:
+    - pytest tests/test_prediction.py
+  artifacts:
+    reports:
+      junit: report.xml
+    expire_in: 1 hour
+
+# Job to build and push the Docker image
+push_docker_image:
+  stage: build
+  tags:
+    - self-hosted
+  before_script:
+    - docker login -u $DOCKER_USER -p $DOCKER_PASS
+  script:
+    - docker build -t $DOCKER_USER/churn-prediction:latest .
+    - docker push $DOCKER_USER/churn-prediction:latest
+
+# Job to deploy the Docker container
+deploy:
+  stage: deploy
+  tags:
+    - self-hosted
+  script:
+    - docker pull $DOCKER_USER/churn-prediction:latest
+    - docker ps -q -f "name=churn-prediction" | xargs -r docker stop
+    - docker rm churn-prediction || true
+    - docker run -d --name churn-prediction -p 8080:8080 $DOCKER_USER/churn-prediction:latest
+
