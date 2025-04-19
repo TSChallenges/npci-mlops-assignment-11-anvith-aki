@@ -25,3 +25,5 @@ Below are the outputs documented with corresponding images:
 ### Final WEB UI
 ![web_UI](./web_UI.png)
 
+### Docker Hub
+![web_UI](./docker_hub.png)
